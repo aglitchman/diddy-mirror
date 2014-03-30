@@ -15,7 +15,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 Import diddy.assert
 Import diddy.functions
-Import diddy.collections
+Import diddy.containers
 Import diddy.stringbuilder
 Import diddy.exception
 
@@ -387,7 +387,7 @@ Public
 		Self.str = str
 		
 		Local doc:XMLDocument = New XMLDocument
-		Local elements:ArrayList<XMLElement> = New ArrayList<XMLElement>
+		Local elements:DiddyStack<XMLElement> = New DiddyStack<XMLElement>
 		Local thisE:XMLElement = Null, newE:XMLElement = Null
 		Local index:Int = 0, a:Int, b:Int, c:Int, nextIndex:Int
 		Local trimmed:Int[] = New Int[2]
@@ -407,7 +407,7 @@ Public
 			If trimmed[0] <> trimmed[1] Then
 				newE = GetTagContents(trimmed[0], trimmed[1])
 				newE.pi = True
-				doc.pi.Add(newE)
+				doc.pi.Push(newE)
 				newE = Null
 			Else
 				Throw New XMLParseException("XMLParser.ParseString: Empty processing instruction.")
@@ -466,7 +466,7 @@ Public
 					
 					' pop the element from the stack, or set the document root
 					If Not elements.IsEmpty() Then
-						thisE = elements.RemoveLast()
+						thisE = elements.Pop()
 					Else
 						'doc.root = thisE
 						Exit
@@ -503,7 +503,7 @@ Public
 					End
 					
 					' push this element
-					elements.AddLast(thisE)
+					elements.Push(thisE)
 					
 					' and set as the current
 					thisE = newE
@@ -539,8 +539,8 @@ Private
 	Field xmlVersion:String = "1.0"
 	Field xmlEncoding:String = "UTF-8"
 	Field root:XMLElement
-	Field pi:ArrayList<XMLElement> = New ArrayList<XMLElement>
-	Field prologs:ArrayList<XMLElement> = New ArrayList<XMLElement>
+	Field pi:DiddyStack<XMLElement> = New DiddyStack<XMLElement>
+	Field prologs:DiddyStack<XMLElement> = New DiddyStack<XMLElement>
 	
 Public
 	
@@ -573,11 +573,11 @@ Public
 		Return root
 	End
 	
-	Method Prologs:ArrayList<XMLElement>() Property
+	Method Prologs:DiddyStack<XMLElement>() Property
 		Return prologs
 	End
 	
-	Method ProcessingInstructions:ArrayList<XMLElement>() Property
+	Method ProcessingInstructions:DiddyStack<XMLElement>() Property
 		Return pi
 	End
 	
@@ -616,8 +616,8 @@ Private
 	Field closeTagEnd:String = ">"
 	
 	Field name:String
-	Field attributes:ArrayList<XMLAttribute> = New ArrayList<XMLAttribute>
-	Field children:ArrayList<XMLElement> = New ArrayList<XMLElement>
+	Field attributes:DiddyStack<XMLAttribute> = New DiddyStack<XMLAttribute>
+	Field children:DiddyStack<XMLElement> = New DiddyStack<XMLElement>
 	Field value:String
 	Field parent:XMLElement
 
@@ -633,7 +633,7 @@ Public
 	Method New(name:String, parent:XMLElement = Null)
 		Self.parent = parent
 		Self.name = name
-		If parent <> Null Then parent.children.Add(Self)
+		If parent <> Null Then parent.children.Push(Self)
 	End
 
 ' Methods
@@ -652,13 +652,13 @@ Public
 	' avoid using this method if you can, because you should try not to have "floating" elements
 	Method AddChild:Void(child:XMLElement)
 		If children.Contains(child) Return
-		children.Add(child)
+		children.Push(child)
 		child.parent = Self
 	End
 	
 	Method HasAttribute:Bool(name:String)
 		If Not name Then Return False ' checking for an empty name, will always return false
-		For Local i% = 0 Until attributes.Size
+		For Local i% = 0 Until attributes.Count()
 			Local att:XMLAttribute = attributes.Get(i)
 			If att.name = name Then Return True
 		Next
@@ -667,7 +667,7 @@ Public
 	
 	Method GetAttribute:String(name:String, defaultValue:String = "")
 		If Not name Then Return "" ' reading an empty name will always return ""
-		For Local i% = 0 Until attributes.Size
+		For Local i% = 0 Until attributes.Count()
 			Local att:XMLAttribute = attributes.Get(i)
 			If att.name = name Then Return att.value
 		Next
@@ -677,7 +677,7 @@ Public
 	Method SetAttribute:String(name:String, value:String)
 		' we'll prevent the developer from setting an attribute with an empty name, as it makes no sense
 		If Not name Then Throw New IllegalArgumentException("XMLElement.SetAttribute: name must not be empty")
-		For Local i% = 0 Until attributes.Size
+		For Local i% = 0 Until attributes.Count()
 			Local att:XMLAttribute = attributes.Get(i)
 			If att.name = name Then
 				Local old:String = att.value
@@ -685,16 +685,16 @@ Public
 				Return old
 			End
 		Next
-		attributes.Add(New XMLAttribute(name, value))
+		attributes.Push(New XMLAttribute(name, value))
 		Return ""
 	End
 	
 	Method ClearAttribute:String(name:String)
 		If Not name Then Return "" ' clearing an attribute with an empty name just returns ""
-		For Local i% = 0 Until attributes.Size
+		For Local i% = 0 Until attributes.Count()
 			Local att:XMLAttribute = attributes.Get(i)
 			If att.name = name Then
-				attributes.Remove(att)
+				attributes.RemoveItem(att)
 				Return att.value
 			End
 		Next
@@ -703,14 +703,16 @@ Public
 	
 	Method Dispose:Void(removeSelf:Bool = True)
 		' dispose children
+		#Rem FIXME
 		Local en:IEnumerator<XMLElement> = children.Enumerator()
 		While en.HasNext()
 			Local element:XMLElement = en.NextObject()
 			element.Dispose(False)
 			en.Remove()
 		End
+		#End
 		' remove self from parent if this is not recursing
-		If removeSelf And parent <> Null Then parent.children.Remove(Self)
+		If removeSelf And parent <> Null Then parent.children.RemoveItem(Self)
 		' clear out the parent
 		parent = Null
 	End
@@ -724,7 +726,7 @@ Public
 		End
 		rv += openTagStart + name
 		If Not attributes.IsEmpty() Then
-			For Local i% = 0 Until attributes.Size
+			For Local i% = 0 Until attributes.Count()
 				Local att:XMLAttribute = attributes.Get(i)
 				rv += " " + att.name + "=~q" + EscapeXMLString(att.value) + "~q"
 			Next
@@ -741,7 +743,7 @@ Public
 			If formatXML Then
 				rv += "~n"
 			End
-			For Local i% = 0 Until children.Size
+			For Local i% = 0 Until children.Count()
 				rv += children.Get(i).ToString(formatXML, indentation + 1)
 			End
 			Local esc:String = EscapeXMLString(value.Trim())
@@ -765,9 +767,9 @@ Public
 		Return rv
 	End
 	
-	Method GetChildrenByName:ArrayList<XMLElement>(findName$, att1$="", att2$="", att3$="", att4$="", att5$="", att6$="", att7$="", att8$="", att9$="", att10$="")
+	Method GetChildrenByName:DiddyStack<XMLElement>(findName$, att1$="", att2$="", att3$="", att4$="", att5$="", att6$="", att7$="", att8$="", att9$="", att10$="")
 		If Not findName Then Throw New IllegalArgumentException("XMLElement.GetChildrenByName: findName must not be empty")
-		Local rv:ArrayList<XMLElement> = New ArrayList<XMLElement>
+		Local rv:DiddyStack<XMLElement> = New DiddyStack<XMLElement>
 		For Local element:XMLElement = Eachin children
 			If element.name = findName Then
 				If att1 And Not element.MatchesAttribute(att1) Then Continue
@@ -780,7 +782,7 @@ Public
 				If att8 And Not element.MatchesAttribute(att8) Then Continue
 				If att9 And Not element.MatchesAttribute(att9) Then Continue
 				If att10 And Not element.MatchesAttribute(att10) Then Continue
-				rv.Add(element)
+				rv.Push(element)
 			End
 		Next
 		Return rv
@@ -814,7 +816,7 @@ Public
 	End
 	
 ' Properties
-	Method Children:ArrayList<XMLElement>() Property
+	Method Children:DiddyStack<XMLElement>() Property
 		Return children
 	End
 	

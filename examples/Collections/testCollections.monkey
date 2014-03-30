@@ -10,7 +10,7 @@ Strict
 Import diddy
 Import monkey.list
 
-Class Test Implements IComparable
+Class Test Implements IDepComparable
 	Field a:Int
 	
 	Method New(a:Int)
@@ -106,14 +106,14 @@ Function TestLists:Void(l1:ArrayList<StringObject>, l2:ArrayList<StringObject>)
 		Print("value="+so.value)
 	Next
 	
-	Print("Looping on l1 manually with IEnumerator...")
-	Local oe:IEnumerator<StringObject> = l1.Enumerator()
+	Print("Looping on l1 manually with IDepEnumerator...")
+	Local oe:IDepEnumerator<StringObject> = l1.Enumerator()
 	While oe.HasNext()
 		Local val:StringObject = oe.NextObject()
 		Print("value="+val.value)
 	End
 	
-	Print("Jumping to end of IEnumerator and looping in reverse...")
+	Print("Jumping to end of IDepEnumerator and looping in reverse...")
 	oe = l1.Enumerator()
 	oe.Last()
 	While oe.HasPrevious()
@@ -126,7 +126,7 @@ Function TestLists:Void(l1:ArrayList<StringObject>, l2:ArrayList<StringObject>)
 		Print("value="+val.value)
 	End
 	
-	Print("Testing removing items with IEnumerator (forward)...")
+	Print("Testing removing items with IDepEnumerator (forward)...")
 	Print("We'll remove the item 'test1'")
 	oe = l1.Enumerator()
 	While oe.HasNext()

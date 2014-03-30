@@ -9,8 +9,6 @@ Strict
 
 Import diddy.assert
 Import diddy.exception
-Import diddy.comparator
-Import diddy.quicksort
 
 #Rem
 header: Monkey Collections Framework
@@ -26,7 +24,7 @@ Based loosely on the Java Collections Framework
 Class ICollection<E> Abstract
 Private
 	' A custom comparator to use for sorting and comparing items.
-	Field comparator:IComparator = Null
+	Field comparator:IDepComparator = Null
 	
 Public
 ' Abstract
@@ -35,42 +33,40 @@ Public
 	Method Clear:Void() Abstract
 	Method Contains:Bool(o:E) Abstract
 	Method ContainsAll:Bool(c:ICollection<E>) Abstract
-	Method Enumerator:IEnumerator<E>() Abstract ' should return an appropriate IEnumerator for the collection
+	Method Enumerator:IDepEnumerator<E>() Abstract ' should return an appropriate IDepEnumerator for the collection
 	Method FillArray:Int(arr:Object[]) Abstract ' populates the passed array and returns the number of items filled. best used for android
 	Method IsEmpty:Bool() Abstract
 	Method Remove:Bool(o:E) Abstract
 	Method RemoveAll:Bool(c:ICollection<E>) Abstract
 	Method RetainAll:Bool(c:ICollection<E>) Abstract
 	Method Size:Int() Property Abstract
-	Method Sort:Void(reverse:Bool = False, comp:IComparator = Null) Abstract
+	Method Sort:Void(reverse:Bool = False, comp:IDepComparator = Null) Abstract
 	Method ToArray:Object[]() Abstract ' creates a new array of the correct size and returns it
 
 ' Methods
 	'summary: due to a limitation in Monkey regarding ObjectEnumerator and inheritance, this simply calls Enumerator()
-	Method ObjectEnumerator:IEnumerator<E>()
+	Method ObjectEnumerator:IDepEnumerator<E>()
 		Return Enumerator()
 	End
 	
 ' Properties
 	'summary: Property to read comparator
-	Method Comparator:IComparator() Property
+	Method Comparator:IDepComparator() Property
 		Return comparator
 	End
 	
 	'summary: Property to write comparator
-	Method Comparator:Void(comparator:IComparator) Property
+	Method Comparator:Void(comparator:IDepComparator) Property
 		Self.comparator = comparator
 	End
 End
 
-
-
 #Rem
-	summary: IEnumerator
+	summary: IDepEnumerator
 	Used in the ObjectEnumerator method for calls to EachIn.
 	If retrieved and used manually, the HasPrevious/PreviousObject/Remove/First/Last methods can be called.
 #End
-Class IEnumerator<E>
+Class IDepEnumerator<E>
 ' Abstract
 	Method HasNext:Bool() Abstract
 	Method HasPrevious:Bool() Abstract
@@ -119,7 +115,7 @@ Public
 	
 ' Methods
 	'summary: Overrides ICollection
-	Method Enumerator:IEnumerator<E>()
+	Method Enumerator:IDepEnumerator<E>()
 		Return New ListEnumerator<E>(Self)
 	End
 End
@@ -128,9 +124,9 @@ End
 
 #Rem
 	summary: ListEnumerator
-	Extends IEnumerator to provide support for EachIn.  Blocks concurrent modification, but allows elements to be removed on the fly.
+	Extends IDepEnumerator to provide support for EachIn.  Blocks concurrent modification, but allows elements to be removed on the fly.
 #End
-Class ListEnumerator<E> Extends IEnumerator<E>
+Class ListEnumerator<E> Extends IDepEnumerator<E>
 Private
 	Field lst:IList<E>
 	Field lastIndex:Int = 0
@@ -150,19 +146,19 @@ Public
 	End
 
 ' Methods
-	'summary: Overrides IEnumerator
+	'summary: Overrides IDepEnumerator
 	Method HasNext:Bool()
 		CheckConcurrency()
 		Return index < lst.Size
 	End
 	
-	'summary: Overrides IEnumerator
+	'summary: Overrides IDepEnumerator
 	Method HasPrevious:Bool()
 		CheckConcurrency()
 		Return index > 0
 	End
 	
-	'summary: Overrides IEnumerator
+	'summary: Overrides IDepEnumerator
 	Method NextObject:E()
 		CheckConcurrency()
 		lastIndex = index
@@ -170,7 +166,7 @@ Public
 		Return lst.Get(lastIndex)
 	End
 	
-	'summary: Overrides IEnumerator
+	'summary: Overrides IDepEnumerator
 	Method PreviousObject:E()
 		CheckConcurrency()
 		index -= 1
@@ -178,7 +174,7 @@ Public
 		Return lst.Get(lastIndex)
 	End
 	
-	'summary: Overrides IEnumerator
+	'summary: Overrides IDepEnumerator
 	Method Remove:Void()
 		CheckConcurrency()
 		lst.RemoveAt(lastIndex)
@@ -187,19 +183,19 @@ Public
 		expectedModCount = lst.modCount
 	End
 	
-	'summary: Overrides IEnumerator
+	'summary: Overrides IDepEnumerator
 	Method First:Void()
 		CheckConcurrency()
 		index = 0
 	End
 	
-	'summary: Overrides IEnumerator
+	'summary: Overrides IDepEnumerator
 	Method Last:Void()
 		CheckConcurrency()
 		index = lst.Size
 	End
 	
-	'summary: Overrides IEnumerator
+	'summary: Overrides IDepEnumerator
 	Method Reset:Void()
 		index = 0
 		expectedModCount = lst.modCount
@@ -413,7 +409,7 @@ Public
 	End
 	
 	'summary: Overrides ICollection
-	Method Enumerator:IEnumerator<E>()
+	Method Enumerator:IDepEnumerator<E>()
 		Return New ArrayListEnumerator<E>(Self)
 	End
 	
@@ -481,11 +477,11 @@ Public
 	End
 	
 	'summary: Overrides ICollection
-	Method Sort:Void(reverse:Bool = False, comp:IComparator = Null)
+	Method Sort:Void(reverse:Bool = False, comp:IDepComparator = Null)
 		If size <= 1 Then Return ' can't sort 0 or 1 elements
 		If comp = Null Then comp = Self.Comparator
 		If comp = Null Then comp = DEFAULT_COMPARATOR
-		QuickSort(elements, 0, size-1, comp, reverse)
+		DepQuickSort(elements, 0, size-1, comp, reverse)
 		modCount += 1
 	End
 	
@@ -636,7 +632,7 @@ Class IntArrayList Extends ArrayList<IntObject>
 	End
 	
 	'summary: Overrides ArrayList
-	Method Enumerator:IEnumerator<IntObject>()
+	Method Enumerator:IDepEnumerator<IntObject>()
 		Return New IntListEnumerator(Self)
 	End
 	
@@ -724,7 +720,7 @@ Class FloatArrayList Extends ArrayList<FloatObject>
 	End
 	
 	'summary: Overrides ArrayList
-	Method Enumerator:IEnumerator<FloatObject>()
+	Method Enumerator:IDepEnumerator<FloatObject>()
 		Return New FloatListEnumerator(Self)
 	End
 	
@@ -812,7 +808,7 @@ Class StringArrayList Extends ArrayList<StringObject>
 	End
 
 	'summary: Overrides ArrayList
-	Method Enumerator:IEnumerator<StringObject>()
+	Method Enumerator:IDepEnumerator<StringObject>()
 		Return New StringListEnumerator(Self)
 	End
 	
@@ -1258,7 +1254,7 @@ End
 ' Note that if the pool is full, a call to GetObject() will return Null.
 Class ArrayPool<T> ' <T implements IArrayPoolable>
 Private
-	Field comparator:IComparator = Null
+	Field comparator:IDepComparator = Null
 	Field objects:Object[] ' we use Object[] instead of T[] so that we can pass it into QuickSort()
 	Field activeCount:Int = 0
 	Field capacity:Int
@@ -1276,12 +1272,12 @@ Private
 	
 Public
 	'summary: Property to read comparator
-	Method Comparator:IComparator() Property
+	Method Comparator:IDepComparator() Property
 		Return comparator
 	End
 	
 	'summary: Property to write comparator
-	Method Comparator:Void(comparator:IComparator) Property
+	Method Comparator:Void(comparator:IDepComparator) Property
 		Self.comparator = comparator
 	End
 	
@@ -1354,7 +1350,7 @@ Public
 	
 	'summary: Performs a quicksort on the pool, doing a purge first.
 	'Due to the way purging works, the pool will most likely become unsorted when items are purged.
-	Method Sort:Void(reverse:Bool = False, comp:IComparator = Null)
+	Method Sort:Void(reverse:Bool = False, comp:IDepComparator = Null)
 		Purge()
 		If activeCount <= 1 Then Return ' can't sort 0 or 1 elements
 		If comp = Null Then comp = Self.Comparator
@@ -1401,4 +1397,113 @@ Public
 		currentIndex += 1
 		Return T(pool.objects[currentIndex-1])
 	End
+End
+
+#Rem
+	summary: IDepComparable
+	Allows developers to sort a collection without using a Comparator.  Each class is responsible
+	for providing its own logic to determine how it should be sorted.
+#End
+Interface IDepComparable
+	Method Compare:Int(o:Object)
+	Method Equals:Bool(o:Object)
+End
+
+#Rem
+	summary:IDepComparator
+	This is a way For developers To provide a custom comparison Method For sorting lists.
+	It's sort of like a function pointer.
+#End
+Class IDepComparator Abstract
+' Abstract
+	Method Compare:Int(o1:Object, o2:Object) Abstract
+	
+' Methods
+	Method Equals:Bool(o1:Object, o2:Object)
+		Return o1 = o2 Or Compare(o1, o2) = 0
+	End
+	
+	Method HashCode:Int(o:Object)
+		Return 0
+	End
+End
+
+#Rem
+	summary: DefaultComparator
+	Implements an IComparator to handle primitive wrappers and strings.
+#End
+Global DEFAULT_COMPARATOR:DefaultComparator = New DefaultComparator
+Class DefaultComparator Extends IDepComparator
+' Methods
+	'summary: Overrides IDepComparator
+	Method Compare:Int(o1:Object, o2:Object)
+		If IntObject(o1) <> Null And IntObject(o2) <> Null Then
+			If IntObject(o1).value < IntObject(o2).value Then Return -1
+			If IntObject(o1).value > IntObject(o2).value Then Return 1
+			Return 0
+		ElseIf FloatObject(o1) <> Null And FloatObject(o2) <> Null Then
+			If FloatObject(o1).value < FloatObject(o2).value Then Return -1
+			If FloatObject(o1).value > FloatObject(o2).value Then Return 1
+			Return 0
+		ElseIf StringObject(o1) <> Null And StringObject(o2) <> Null Then
+			If StringObject(o1).value < StringObject(o2).value Then Return -1
+			If StringObject(o1).value > StringObject(o2).value Then Return 1
+			Return 0
+		End
+		If o1 = o2 Then Return 0
+		If o1 = Null Then Return -1
+		If o2 = Null Then Return 1
+		Return 0 ' don't know what to do!
+	End
+	
+	'summary: Overrides IDepComparator
+	Method Equals:Bool(o1:Object, o2:Object)
+		If IntObject(o1) <> Null And IntObject(o2) <> Null Then
+			Return IntObject(o1).value = IntObject(o2).value
+		ElseIf FloatObject(o1) <> Null And FloatObject(o2) <> Null Then
+			Return FloatObject(o1).value = FloatObject(o2).value
+		ElseIf StringObject(o1) <> Null And StringObject(o2) <> Null Then
+			Return StringObject(o1).value = StringObject(o2).value
+		End
+		Return o1 = o2
+	End
+End
+
+'summary: DepQuickSort
+Function DepQuickSort:Void(arr:Object[], left:Int, right:Int, comp:IDepComparator, reverse:Bool = False)
+	If right > left Then
+		Local pivotIndex:Int = left + (right-left)/2
+		Local pivotNewIndex:Int = DepQuickSortPartition(arr, left, right, pivotIndex, comp, reverse)
+		DepQuickSort(arr, left, pivotNewIndex - 1, comp, reverse)
+		DepQuickSort(arr, pivotNewIndex + 1, right, comp, reverse)
+	End
+End
+
+'summary: DepQuickSortPartition
+Function DepQuickSortPartition:Int(arr:Object[], left:Int, right:Int, pivotIndex:Int, comp:IDepComparator, reverse:Bool = False)
+	Local pivotValue:Object = arr[pivotIndex]
+	arr[pivotIndex] = arr[right]
+	arr[right] = pivotValue
+	Local storeIndex:Int = left, val:Object
+	For Local i:Int = left Until right
+		If IDepComparable(arr[i]) <> Null Then
+			If Not reverse And IDepComparable(arr[i]).Compare(pivotValue) <= 0 Or reverse And IDepComparable(arr[i]).Compare(pivotValue) >= 0 Then
+				val = arr[i]
+				arr[i] = arr[storeIndex]
+				arr[storeIndex] = val
+				storeIndex += 1
+			End
+		Else
+			If Not reverse And comp.Compare(arr[i], pivotValue) <= 0 Or reverse And comp.Compare(arr[i], pivotValue) >= 0 Then
+				val = arr[i]
+				arr[i] = arr[storeIndex]
+				arr[storeIndex] = val
+				storeIndex += 1
+			End
+		End
+	Next
+	val = arr[storeIndex]
+	arr[storeIndex] = arr[right]
+	arr[right] = val
+	Return storeIndex
 End
